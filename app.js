@@ -1,31 +1,16 @@
-// include the cluster module
-var cluster = require('cluster');
-// code to run if we're in the master process
+"use strict";
+const cluster = require('cluster');
+
 if (cluster.isMaster) {
-    // start master with the cluster
-    var Master   = require('./master');
-    var master   = new Master({cluster:cluster});
-    // master create a worker for each CPU
-    var cpuCount = require('os').cpus().length;
-
-    console.log('Master cluster setting up ' + cpuCount + ' workers...');
-
-    for (var i = 0; i < cpuCount; i += 1){
-        master.createWorker();
-    }
-
-    cluster.on('listening', function(worker, address) {
-        master.onWorkerCreate(worker, address);
-    });
-
-    // listen for dying workers
-    cluster.on('exit', function(worker){
-        master.onWorkerExit(worker);
-    });
-// code to run if we're in a worker process
+    const master = require('./master');
+	let configMaster = { cluster: cluster };
+    let masterInstance = master(configMaster);    
+	
+	masterInstance.run();
 } else {
-    // start worker
-    var Workers = require('./workers');
-    var workers = new Workers(cluster.worker.id);
-    workers.run();
+    const worker = require('./worker');
+	let configWorker = { worker: cluster.worker };
+    let workerInstance = worker(configWorker);
+	
+    workerInstance.run();
 }

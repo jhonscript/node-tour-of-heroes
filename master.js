@@ -1,24 +1,42 @@
-var Master = function(config){
-	config       = config || {};
-	this.cluster = config.cluster;
-};
-// create a worker
-Master.prototype.createWorker = function(){
-	var worker = this.cluster.fork();
+"use strict";
+
+const os = require('os');
+
+let master = function (config) {
+	config = config || { cluster: 'ERROR CONFIG'};
+	let Cluster = config.cluster;
+	
+	let createWorker = () => {
+		Cluster.fork();
+	};
+
+	let ready = () => {
+		
+		Cluster.on('listening', (worker, address) => {
+			console.log(`Worker #${worker.id} with the process id ${worker.process.pid} is now connected to ${address.address}:${address.port}`);
+		});
+
+		Cluster.on('exit', (worker) => {
+			console.log(`worker #${worker.id} with the process id ${worker.process.pid} died`);
+					
+			setTimeout(function(){
+				createWorker();
+			}, 500);
+		});
+	};
+	
+	return {
+		run: function() {
+			let cpuCount = os.cpus().length;
+			console.log(`Master cluster with the process id: ${process.pid}, is setting up ${cpuCount} workers`);
+			
+			for (var i = 0; i < cpuCount; i += 1){
+				createWorker();        
+			}
+			
+			ready();
+		}
+	}
 };
 
-Master.prototype.onWorkerCreate = function(worker, address){
-	console.log('worker #' + worker.id + ' is now connected to localhost:' + address.port);
-};
-
-// when worker dies
-Master.prototype.onWorkerExit = function(worker){
-	console.log('worker #' + worker.id + ' died');
-	var master = this;
-	// recreate the worker after 500 milliseconds
-	setTimeout(function(){
-		master.createWorker();
-	}, 500);
-};
-// export module
-module.exports = Master;
+module.exports = master;
